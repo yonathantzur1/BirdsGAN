@@ -2,11 +2,10 @@ import os
 
 import numpy as np
 from PIL import Image
-from keras.layers import Input, Reshape, Dropout, Dense, Flatten, BatchNormalization, Activation, ZeroPadding2D
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
-from keras.optimizers import Adam
+from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, BatchNormalization, Activation, \
+    ZeroPadding2D, LeakyReLU, UpSampling2D, Conv2D
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.optimizers import Adam
 
 # Preview image Frame
 PREVIEW_ROWS = 4
@@ -98,7 +97,7 @@ def save_images(cnt, noise):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    filename = os.path.join(output_path, f"trained-{cnt}.png")
+    filename = os.path.join(output_path, "trained-" + cnt + ".png")
     im = Image.fromarray(image_array)
     im.save(filename)
 
@@ -138,4 +137,5 @@ for epoch in range(EPOCHS):
         save_images(cnt, fixed_noise)
         cnt += 1
         print(
-            f"{epoch} epoch, Discriminator accuracy: {100 * discriminator_metric[1]}, Generator accuracy: {100 * generator_metric[1]}")
+            epoch + " epoch, Discriminator accuracy: " + (100 * discriminator_metric[1]) + ", Generator accuracy: " + (
+                    100 * generator_metric[1]))

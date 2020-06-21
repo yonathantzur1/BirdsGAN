@@ -2,10 +2,15 @@ import os
 
 import numpy as np
 from PIL import Image
+import tensorflow as tf
 from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, BatchNormalization, Activation, \
     ZeroPadding2D, LeakyReLU, UpSampling2D, Conv2D
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam
+
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 
 # Preview image Frame
 PREVIEW_ROWS = 4
@@ -97,7 +102,7 @@ def save_images(cnt, noise):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    filename = os.path.join(output_path, "trained-" + cnt + ".png")
+    filename = os.path.join(output_path, "trained-" + str(cnt) + ".png")
     im = Image.fromarray(image_array)
     im.save(filename)
 
@@ -137,5 +142,5 @@ for epoch in range(EPOCHS):
         save_images(cnt, fixed_noise)
         cnt += 1
         print(
-            epoch + " epoch, Discriminator accuracy: " + (100 * discriminator_metric[1]) + ", Generator accuracy: " + (
+            str(epoch) + " epoch, Discriminator accuracy: " + str(100 * discriminator_metric[1]) + ", Generator accuracy: " + str(
                     100 * generator_metric[1]))

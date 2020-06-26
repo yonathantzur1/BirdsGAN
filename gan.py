@@ -1,12 +1,12 @@
 import os
 
 import numpy as np
-from PIL import Image
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, BatchNormalization, Activation, \
+from PIL import Image
+from keras.layers import Input, Reshape, Dropout, Dense, Flatten, BatchNormalization, Activation, \
     ZeroPadding2D, LeakyReLU, UpSampling2D, Conv2D
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.optimizers import Adam
+from keras.models import Sequential, Model
+from keras.optimizers import Adam
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -20,13 +20,11 @@ SAVE_FREQ = 100
 # Size vector to generate images from
 NOISE_SIZE = 100
 # Configuration
-EPOCHS = 10000  # number of iterations
+EPOCHS = 30000  # number of iterations
 BATCH_SIZE = 32
 GENERATE_RES = 3
 IMAGE_SIZE = 128  # rows/cols
 IMAGE_CHANNELS = 3
-
-training_data = np.load("birds_data.npy")
 
 
 def build_discriminator(image_shape):
@@ -85,6 +83,11 @@ def build_generator(noise_size, channels):
     return Model(input, generated_image)
 
 
+def create_dir(name):
+    if not os.path.exists(name):
+        os.makedirs(name)
+
+
 def save_images(cnt, noise):
     image_array = np.full((
         PREVIEW_MARGIN + (PREVIEW_ROWS * (IMAGE_SIZE + PREVIEW_MARGIN)),
@@ -98,16 +101,23 @@ def save_images(cnt, noise):
             c = col * (IMAGE_SIZE + PREVIEW_MARGIN) + PREVIEW_MARGIN
             image_array[r:r + IMAGE_SIZE, c:c + IMAGE_SIZE] = generated_images[image_count] * 255
             image_count += 1
-    output_path = 'output'
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
+    output_path = "output"
+    create_dir(output_path)
     filename = os.path.join(output_path, "trained-" + str(cnt) + ".png")
     im = Image.fromarray(image_array)
     im.save(filename)
 
 
-###### train #######
+def save_models(cnt, generator_model, discriminator_model):
+    output_path = "models"
+    create_dir(output_path)
+    output_path_dir = output_path + "/" + str(cnt)
+    create_dir(output_path_dir)
+    generator_model.save(output_path_dir + "/generator.h5")
+    discriminator_model.save(output_path_dir + "/discriminator.h5")
+
+
+# train #
 
 image_shape = (IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS)
 optimizer = Adam(1.5e-4, 0.5)
@@ -123,24 +133,31 @@ combined.compile(loss="binary_crossentropy", optimizer=optimizer, metrics=["accu
 y_real = np.ones((BATCH_SIZE, 1))
 y_fake = np.zeros((BATCH_SIZE, 1))
 fixed_noise = np.random.normal(0, 1, (PREVIEW_ROWS * PREVIEW_COLS, NOISE_SIZE))
-cnt = 1
+count = 0
+
+training_data = np.load("birds_data.npy")
 
 for epoch in range(EPOCHS):
     idx = np.random.randint(0, training_data.shape[0], BATCH_SIZE)
     x_real = training_data[idx]
 
-    noise = np.random.normal(0, 1, (BATCH_SIZE, NOISE_SIZE))
-    x_fake = generator.predict(noise)
+    batch_noise = np.random.normal(0, 1, (BATCH_SIZE, NOISE_SIZE))
+    x_fake = generator.predict(batch_noise)
 
     discriminator_metric_real = discriminator.train_on_batch(x_real, y_real)
     discriminator_metric_generated = discriminator.train_on_batch(x_fake, y_fake)
 
     discriminator_metric = 0.5 * np.add(discriminator_metric_real, discriminator_metric_generated)
-    generator_metric = combined.train_on_batch(noise, y_real)
+    generator_metric = combined.train_on_batch(batch_noise, y_real)
 
     if epoch % SAVE_FREQ == 0:
-        save_images(cnt, fixed_noise)
-        cnt += 1
-        print(
-            str(epoch) + " epoch, Discriminator accuracy: " + str(100 * discriminator_metric[1]) + ", Generator accuracy: " + str(
-                    100 * generator_metric[1]))
+        count = count + 1
+        print("epoch: " + str(epoch))
+        print("Generator loss: " + str(generator_metric[0]) + ", Generator accuracy: " + str(100 * generator_metric[1]))
+        print("Discriminator loss: " + str(discriminator_metric[0]) + ", Discriminator accuracy: " + str(
+            100 * discriminator_metric[1]))
+        print("-----------------------------------------------------------------")
+        print()
+
+        save_images(count, fixed_noise)
+        save_models(count, generator, discriminator)

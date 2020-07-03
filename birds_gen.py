@@ -2,22 +2,34 @@ import os
 
 import numpy as np
 from PIL import Image
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 
-NOISE_SIZE = 100
-PREVIEW_ROWS = 4
-PREVIEW_COLS = 7
-PREVIEW_MARGIN = 4
+NOISE_SIZE = 256
+PREVIEW_MARGIN = 1
 IMAGE_SIZE = 128
 
+PREVIEW_ROWS = 2
+PREVIEW_COLS = 2
+THRESHOLD = 0.9
+
+
 GENERATOR_MODEL = "models/generator.h5"
+DISCRIMINATOR_MODEL = "models/discriminator.h5"
 
 
-def generate_image(noise):
+def generate_image(generator, discriminator):
     image_array = np.full((
         PREVIEW_MARGIN + (PREVIEW_ROWS * (IMAGE_SIZE + PREVIEW_MARGIN)),
         PREVIEW_MARGIN + (PREVIEW_COLS * (IMAGE_SIZE + PREVIEW_MARGIN)), 3), 255, dtype=np.uint8)
+
+    noise = np.random.normal(0, 1, (PREVIEW_ROWS * PREVIEW_COLS, NOISE_SIZE))
     generated_images = generator.predict(noise)
+
+    while min(discriminator.predict(generated_images))[0] < THRESHOLD:
+        noise = np.random.normal(0, 1, (PREVIEW_ROWS * PREVIEW_COLS, NOISE_SIZE))
+        generated_images = generator.predict(noise)
+
+    print("acc: " + str(min(discriminator.predict(generated_images))[0]))
     generated_images = 0.5 * generated_images + 0.5
     image_count = 0
     for row in range(PREVIEW_ROWS):
@@ -32,5 +44,8 @@ def generate_image(noise):
 
 
 generator = load_model(GENERATOR_MODEL)
-random_noise = np.random.normal(0, 1, (PREVIEW_ROWS * PREVIEW_COLS, NOISE_SIZE))
-generate_image(random_noise)
+discriminator = load_model(DISCRIMINATOR_MODEL)
+
+print("Generating...")
+generate_image(generator, discriminator)
+print("done...")
